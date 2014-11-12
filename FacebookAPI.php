@@ -14,7 +14,7 @@ class FacebookAPI {
     const appSecret = "e9467392ad1384c5ecda1296df6923f5";
     const appID = "383021825180155";
     const appToken = "383021825180155|9PzaQU21GbeRVTAO9pvO1jspgZQ"; // Valid access token, I used app token here but you might want to use a user token .. up to you
-    const feedToken = "CAAFcWzfUwfsBABTvpMC0FckobvFV1GJ9ERkgTi2Ucl7uUMuNrxrS30aFrlSEuBfwmaiu5OZAMXu3Cy4jnTZBXzNKXv9bwTuaVjueWlV6O8Xk31RhCzZA9nncD5AtuuKbZA0j3lh5Fi1elHZBXCYfaZCWYQMwPOEK8igcxV9nWrTlGKuSnLj572SgQLrZCL3ZCFIuMk1drEZCqDTZABf1lt9HQK15MjOy2ldtgZD";
+    const feedToken = "CAAFcWzfUwfsBAAc7VyfLETRmFRFzZBcjZC82m70YyoviGEipzOpJlO1iD7s1Wjn2YI69o1nBAHTECYZBsi5AQmZAyCiJiW8FfO7DIAXoZCb0uu98ZAkfIYVLZBB9qGSGZC0TPPitEW6baw9nWBZAHEV1DY720EZBcrEKP2FNKNi3I7B1Kd6ABL72uYheIuHFF3b21ZBoW2IsWnLUUI0pROFUFVcDYXPTNfN1QQZD";
     const pageID = "BandaTurnOff";
     const pagesBaseURL = "https://graph.facebook.com/%s/posts?access_token=%s&limit=%d&since=%s"; //(id da pg, token)
     const feedBaseURL = "https://graph.facebook.com/%s/home?access_token=%s"; //(id do perfil, token)
@@ -81,28 +81,38 @@ class FacebookAPI {
         }
 
         $pagePosts = $this->getDataFromURL($requestURL);
+        //printrx($pagePosts);
+        if (isset($pagePosts['error'])) {
+            echo "<b>Erro!</b><br>";
+            $this->printrx($pagePosts);
+        }
+
         foreach ($pagePosts['data'] as $post) {
             $posts[] = $post;
         }
+        $posts['url'] = $requestURL;
         return $posts;
     }
 
     public function getOrderedPosts($limiteChamadas = 1) {
         $posts = array();
         $chamadas = 0;
-        $posts = $this->getFeedPosts($posts, $posts['pagging']['next']);
-        /*
-          while ((isset($posts['pagging']['next']) && $chamadas < $limiteChamadas) || (!isset($posts['pagging']['next']) || $chamadas == 0)) {
-          $posts = $this->getFeedPosts($posts, $posts['pagging']['next']);
-          $chamadas++;
-          }
-         * 
-         */
+        //$posts = $this->getFeedPosts($posts, $posts['pagging']['next']);
+
+        $requestURL = $posts['url'];
+        unset($posts['url']);
+
+        while ((isset($posts['pagging']['next']) && $chamadas < $limiteChamadas) || (!isset($posts['pagging']['next']) || $chamadas == 0)) {
+            $posts = $this->getFeedPosts($posts, $posts['pagging']['next']);
+            $chamadas++;
+        }
         //die("getOrderedPosts");
-        printrx($posts);
+        //printrx($posts);
 
         $posts = $this->calcRank($posts);
         $orderedPosts = $this->u->array_sort($posts, "peso", SORT_DESC);
+        //printrx($orderedPosts);
+        $orderedPosts['url'] = $requestURL;
         return $orderedPosts;
     }
 
@@ -147,13 +157,16 @@ class FacebookAPI {
             $shares = $post['shares'];
             $numShares += count($shares);
 
+            $peso = ($numLikes * $this->getPesoLike()) + ($numComments * $this->getPesoComment()) + ($numShares * $this->getPesoShare());
+
             $p[] = array(
                 'post' => $post,
                 'likes' => $numLikes,
                 'comments' => $numComments,
                 'shares' => $numShares,
-                'peso' => ($numLikes * $this->getPesoLike()) + ($numComments * $this->getPesoComment()) + ($numShares * $this->getPesoShare())
+                'peso' => $peso
             );
+            //printrx($p);
         }
         return $p;
     }
